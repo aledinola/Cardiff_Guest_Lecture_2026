@@ -324,3 +324,26 @@ TSWLatexianTemp*
 # option is specified. Footnotes are the stored in a file with suffix Notes.bib.
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
+
+## MATLAB autosave/temp files:
+*.asv
+
+## Dynare generated outputs (keep .mod sources tracked):
+codes/paramfile.mat
+codes/*.jnl
+codes/*_results.mat
+codes/*_dynamic.m
+codes/*_static.m
+codes/*_set_auxiliary_variables.m
+codes/*_original_main.m
+codes/*_mex.mexa64
+codes/*_mex.mexw64
+codes/+*/
+
+# Dynare may also generate model-named output folders in recent versions.
+codes/stochastic_growth_dynare/
+codes/stochastic_growth_dynare2/
+
+# Legacy Dynare driver files for the models used in this repo.
+codes/stochastic_growth_dynare.m
+codes/stochastic_growth_dynare2.m
