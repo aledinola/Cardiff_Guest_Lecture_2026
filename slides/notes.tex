@@ -1,0 +1,369 @@
+% \input{tcilatex}
+% \input{tcilatex}
+
+\documentclass[12pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue,citecolor=blue]{hyperref}
+
+\setcounter{MaxMatrixCols}{10}
+%TCIDATA{OutputFilter=Latex.dll}
+%TCIDATA{Version=5.50.0.2953}
+%TCIDATA{<META NAME="SaveForMode" CONTENT="1">}
+%TCIDATA{BibliographyScheme=Manual}
+%TCIDATA{LastRevised=Sunday, April 12, 2026 15:36:01}
+%TCIDATA{<META NAME="GraphicsSave" CONTENT="32">}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\begin{document}
+
+\title{Detailed Notes for the Cardiff Lecture}
+\author{Alessandro Di Nola}
+\date{March 31, 2026}
+\maketitle
+
+\section{The Stochastic Growth Model}
+
+These notes explain how to solve the stochastic neoclassical growth model with a first-order perturbation. The same workflow applies more broadly to many dynamic macroeconomic models.
+
+\begin{enumerate}
+\item Write down the equilibrium conditions.
+\item Compute the deterministic steady state.
+\item Take a linear or log-linear approximation of the equilibrium conditions around the deterministic steady state.
+\item Solve the resulting linear rational expectations system.
+\item Simulate the model and compute impulse responses to shocks.
+\end{enumerate}
+
+We will first work through these steps by hand. We will then see how Dynare can automate most of the procedure, once the model equations and the steady state have been specified. A classic reference for the manual solution method is Uhlig (1999).
+
+\subsection{The Planner's Problem}
+
+The planner chooses the sequence $\{c_t,k_{t+1}\}_{t=0}^{\infty}$ to solve
+\begin{equation*}
+\max_{\{c_t,k_{t+1}\}_{t=0}^{\infty}}
+\;
+E_0\left\{\sum_{t=0}^{\infty}\beta^t \frac{c_t^{1-\sigma}}{1-\sigma}\right\}
+\end{equation*}
+subject to
+\begin{equation*}
+c_t + k_{t+1} \le z_t k_t^\alpha + (1-\delta)k_t,
+\qquad t=0,1,2,\dots,
+\end{equation*}
+given $k_0>0$ and an initial value for $z_0$.
+
+Here $c_t$ denotes consumption, $k_t$ the capital stock available at the beginning of period $t$, and $z_t$ total factor productivity. The parameter $\beta \in (0,1)$ is the discount factor, $\sigma > 0$ is the coefficient of relative risk aversion, $\alpha \in (0,1)$ is the capital share in production, and $\delta \in (0,1]$ is the depreciation rate. Because utility is increasing in consumption and capital is costly in terms of foregone consumption, the resource constraint holds with equality at the optimum.
+
+Productivity follows a stationary AR(1) process in logs:
+\begin{equation*}
+\log z_{t+1} = \rho \log z_t + \varepsilon_{t+1},
+\qquad
+\varepsilon_{t+1} \sim \text{i.i.d. } N(0,\sigma_\varepsilon^2),
+\end{equation*}
+with persistence parameter $\rho \in [0,1)$.
+
+The Lagrangian is
+\begin{equation*}
+L = \sum_{t=0}^{\infty}\beta^t
+\left[
+\frac{c_t^{1-\sigma}}{1-\sigma}
++ \lambda_t\left(z_t k_t^\alpha + (1-\delta)k_t - c_t - k_{t+1}\right)
+\right].
+\end{equation*}
+The first-order conditions with respect to $c_t$ and $k_{t+1}$ are
+\begin{equation*}
+\frac{\partial L}{\partial c_t}=0
+\quad \Longrightarrow \quad
+c_t^{-\sigma} = \lambda_t,
+\end{equation*}
+\begin{equation*}
+\frac{\partial L}{\partial k_{t+1}}=0
+\quad \Longrightarrow \quad
+\lambda_t = \beta E_t\left[
+\lambda_{t+1}\left(\alpha z_{t+1}k_{t+1}^{\alpha-1} + 1-\delta\right)
+\right],
+\end{equation*}
+together with the resource constraint and the transversality condition
+\begin{equation*}
+\lim_{T\to\infty} E_0\left[\beta^T \lambda_T k_{T+1}\right] = 0.
+\end{equation*}
+
+\subsection{Equilibrium Conditions}
+
+In this simple environment the planner's allocation coincides with the competitive equilibrium allocation, so we can work directly with the planner's first-order conditions. The state variables are $k_t$ and $z_t$, while the control variables are $c_t$ and $k_{t+1}$. The equilibrium is characterized by the following system:
+\begin{equation}
+c_t + k_{t+1} = z_t k_t^\alpha + (1-\delta)k_t,
+\label{eq:resource}
+\end{equation}
+\begin{equation}
+c_t^{-\sigma} = \beta E_t\left[
+c_{t+1}^{-\sigma}\left(\alpha z_{t+1}k_{t+1}^{\alpha-1}+1-\delta\right)
+\right],
+\label{eq:euler}
+\end{equation}
+\begin{equation}
+\log z_t = \rho \log z_{t-1} + \varepsilon_t,
+\qquad
+\varepsilon_t \sim \text{i.i.d. } N(0,\sigma_\varepsilon^2).
+\label{eq:ar1}
+\end{equation}
+This system must be supplemented with initial conditions for $k_0$ and $z_0$, and with the transversality condition.
+
+\subsection{Deterministic Steady State}
+
+In the deterministic steady state there are no shocks, and the endogenous variables are constant over time:
+\[
+c_t=\bar c,\qquad k_t=\bar k,\qquad z_t=\bar z \qquad \text{for all } t.
+\]
+The steady-state system is
+\begin{equation}
+1 = \beta\left(\alpha \bar z \bar k^{\alpha-1} + 1-\delta\right),
+\label{eq:ss_euler}
+\end{equation}
+\begin{equation}
+\bar c + \bar k = \bar z \bar k^\alpha + (1-\delta)\bar k,
+\label{eq:ss_resource}
+\end{equation}
+\begin{equation}
+\log \bar z = \rho \log \bar z.
+\label{eq:ss_ar1}
+\end{equation}
+Since $\rho \in [0,1)$, the last equation implies $\log \bar z = 0$, so $\bar z = 1$.
+
+Using \eqref{eq:ss_euler}, steady-state capital is
+\begin{equation*}
+\bar k =
+\left(
+\frac{\alpha \bar z}{\frac{1}{\beta}-1+\delta}
+\right)^{\frac{1}{1-\alpha}}.
+\end{equation*}
+Steady-state consumption then follows from \eqref{eq:ss_resource}:
+\begin{equation*}
+\bar c = \bar z \bar k^\alpha - \delta \bar k.
+\end{equation*}
+
+\subsection{First-Order Approximation}
+
+\paragraph{General method.}
+Let $f(x_t,y_t)=0$ denote one equilibrium condition. A first-order Taylor approximation around $(\bar x,\bar y)$ is
+\begin{equation*}
+f(x_t,y_t)
+\approx
+f(\bar x,\bar y)
++ f_x(\bar x,\bar y)(x_t-\bar x)
++ f_y(\bar x,\bar y)(y_t-\bar y).
+\end{equation*}
+If we work with log deviations,
+\begin{equation*}
+\hat x_t \equiv \log\left(\frac{x_t}{\bar x}\right)
+\approx \frac{x_t-\bar x}{\bar x},
+\qquad
+\hat y_t \equiv \log\left(\frac{y_t}{\bar y}\right)
+\approx \frac{y_t-\bar y}{\bar y},
+\end{equation*}
+then the same approximation can be written as
+\begin{equation*}
+f(x_t,y_t)
+\approx
+f(\bar x,\bar y)
++ f_x(\bar x,\bar y)\bar x \hat x_t
++ f_y(\bar x,\bar y)\bar y \hat y_t.
+\end{equation*}
+Since the steady state satisfies $f(\bar x,\bar y)=0$, the constant term disappears. A useful approximation rule is
+\begin{equation*}
+x_t = \bar x e^{\hat x_t} \approx \bar x(1+\hat x_t),
+\end{equation*}
+and similarly for any other variable.
+
+\paragraph{Application to the model.}
+Define log deviations by
+\[
+\hat c_t = \log\left(\frac{c_t}{\bar c}\right),
+\qquad
+\hat k_t = \log\left(\frac{k_t}{\bar k}\right),
+\qquad
+\hat z_t = \log\left(\frac{z_t}{\bar z}\right),
+\]
+and recall that, in this model, the steady state satisfies $\bar z=1$.
+
+Using $c_t \approx \bar c(1+\hat c_t)$, $k_t \approx \bar k(1+\hat k_t)$, $k_{t+1}\approx \bar k(1+\hat k_{t+1})$, and $z_t \approx \bar z(1+\hat z_t)$, log-linearizing the resource constraint gives
+\begin{equation}
+\frac{\bar c}{\bar k}\hat c_t + \hat k_{t+1}
+- \frac{1}{\beta}\hat k_t
+- \frac{1}{\alpha}\left(\frac{1}{\beta}-1+\delta\right)\hat z_t
+= 0.
+\label{eq:lin_resource}
+\end{equation}
+To obtain the coefficient on $\hat z_t$, note that
+\[
+\frac{\bar y}{\bar k} = \bar z \bar k^{\alpha-1}
+= \frac{1}{\alpha}\left(\frac{1}{\beta}-1+\delta\right),
+\]
+where $\bar y=\bar z\bar k^\alpha$ denotes steady-state output.
+
+For the Euler equation, define the gross return on capital as
+\[
+R_{t+1} \equiv \alpha z_{t+1}k_{t+1}^{\alpha-1}+1-\delta.
+\]
+At the steady state, $\bar R = 1/\beta$. A first-order approximation of the Euler equation implies
+\[
+-\sigma \hat c_t = E_t\left[-\sigma \hat c_{t+1} + \frac{R_{t+1}-\bar R}{\bar R}\right],
+\]
+and
+\[
+\frac{R_{t+1}-\bar R}{\bar R}
+=
+\beta \alpha \bar z \bar k^{\alpha-1}
+\left(\hat z_{t+1}+(\alpha-1)\hat k_{t+1}\right)
+=
+\left[1-\beta(1-\delta)\right]
+\left(\hat z_{t+1}-(1-\alpha)\hat k_{t+1}\right).
+\]
+Using $E_t \hat z_{t+1}=\rho \hat z_t$, we obtain
+\begin{equation}
+\hat c_t - E_t\hat c_{t+1}
++ \frac{1}{\sigma}\left[1-\beta(1-\delta)\right]\rho \hat z_t
+- \frac{1}{\sigma}(1-\alpha)\left[1-\beta(1-\delta)\right]\hat k_{t+1}
+= 0.
+\label{eq:lin_euler}
+\end{equation}
+Finally, the productivity process is already linear in logs:
+\begin{equation}
+\hat z_t = \rho \hat z_{t-1} + \varepsilon_t.
+\label{eq:lin_ar1}
+\end{equation}
+
+\subsection{Solution by the Method of Undetermined Coefficients}
+
+Write the linearized system \eqref{eq:lin_resource}, \eqref{eq:lin_euler}, and \eqref{eq:lin_ar1} as
+\begin{equation*}
+\alpha_1 \hat c_t + \alpha_2 \hat k_{t+1} + \alpha_3 \hat k_t + \alpha_4 \hat z_t = 0,
+\end{equation*}
+\begin{equation*}
+\beta_1 \hat c_t + \beta_2 E_t\hat c_{t+1} + \beta_3 \hat z_t + \beta_4 \hat k_{t+1} = 0,
+\end{equation*}
+with coefficients
+\begin{equation*}
+\alpha_1 = \frac{\bar c}{\bar k},
+\qquad
+\alpha_2 = 1,
+\qquad
+\alpha_3 = -\frac{1}{\beta},
+\qquad
+\alpha_4 = -\frac{1}{\alpha}\left(\frac{1}{\beta}-1+\delta\right),
+\end{equation*}
+and
+\begin{equation*}
+\beta_1 = 1,
+\qquad
+\beta_2 = -1,
+\qquad
+\beta_3 = \frac{1}{\sigma}\left[1-\beta(1-\delta)\right]\rho,
+\qquad
+\beta_4 = -\frac{1}{\sigma}(1-\alpha)\left[1-\beta(1-\delta)\right].
+\end{equation*}
+
+There are two state variables in this economy, $\hat k_t$ and $\hat z_t$, so we conjecture linear decision rules of the form
+\begin{equation}
+\hat c_t = \eta_{ck}\hat k_t + \eta_{cz}\hat z_t,
+\label{eq:policy_c}
+\end{equation}
+\begin{equation}
+\hat k_{t+1} = \eta_{kk}\hat k_t + \eta_{kz}\hat z_t.
+\label{eq:policy_k}
+\end{equation}
+Taking expectations conditional on information available at time $t$,
+\begin{equation*}
+E_t \hat c_{t+1}
+= \eta_{ck}\hat k_{t+1} + \eta_{cz}E_t\hat z_{t+1}
+= \eta_{ck}\eta_{kk}\hat k_t + \left(\eta_{ck}\eta_{kz}+\eta_{cz}\rho\right)\hat z_t.
+\end{equation*}
+
+Substituting the conjectured policy functions into the linearized system and collecting terms in $\hat k_t$ and $\hat z_t$ implies
+\begin{equation}
+\alpha_1\eta_{ck}+\alpha_2\eta_{kk}+\alpha_3=0,
+\label{eq:und1}
+\end{equation}
+\begin{equation}
+\alpha_1\eta_{cz}+\alpha_2\eta_{kz}+\alpha_4=0,
+\label{eq:und2}
+\end{equation}
+\begin{equation}
+\beta_1\eta_{ck}+\beta_2\eta_{ck}\eta_{kk}+\beta_4\eta_{kk}=0,
+\label{eq:und3}
+\end{equation}
+\begin{equation}
+\beta_1\eta_{cz}
++ \beta_2\left(\eta_{ck}\eta_{kz}+\eta_{cz}\rho\right)
++ \beta_3
++ \beta_4\eta_{kz}=0.
+\label{eq:und4}
+\end{equation}
+
+From \eqref{eq:und1},
+\begin{equation}
+\eta_{ck} = -\frac{\alpha_2\eta_{kk}+\alpha_3}{\alpha_1}.
+\label{eq:eta_ck}
+\end{equation}
+Substituting this expression into \eqref{eq:und3} gives a quadratic equation for $\eta_{kk}$:
+\begin{equation}
+\beta_2\alpha_2\eta_{kk}^2
++ \left(\beta_1\alpha_2+\beta_2\alpha_3-\beta_4\alpha_1\right)\eta_{kk}
++ \beta_1\alpha_3
+= 0.
+\label{eq:eta_kk}
+\end{equation}
+The economically relevant solution is the stable root, namely the one that implies $|\eta_{kk}|<1$. Intuitively, this is the root that delivers a non-explosive path for capital in the linearized system. Once $\eta_{kk}$ is known, equation \eqref{eq:eta_ck} pins down $\eta_{ck}$.
+
+The coefficients loading on the technology shock are then obtained from \eqref{eq:und2} and \eqref{eq:und4}:
+\begin{equation*}
+\eta_{cz} = -\frac{\alpha_2\eta_{kz}+\alpha_4}{\alpha_1},
+\end{equation*}
+and
+\begin{equation*}
+\eta_{kz}
+=
+\frac{\left(\beta_1+\rho\beta_2\right)\alpha_4-\alpha_1\beta_3}
+{\alpha_1\beta_4-\beta_1\alpha_2+\beta_2\left(\alpha_1\eta_{ck}-\alpha_2\rho\right)}.
+\end{equation*}
+This completes the derivation of the linear policy rules.
+
+\subsection{Simulation and Impulse Response Analysis}
+
+Once we have the four policy coefficients $\eta_{ck}$, $\eta_{cz}$, $\eta_{kk}$, and $\eta_{kz}$, it is straightforward to generate time series for capital, consumption, and output.
+
+\paragraph{Stochastic simulation.}
+\begin{enumerate}
+\item Generate a sequence of shocks $\{\varepsilon_t\}_{t=1}^T$ from $N(0,\sigma_\varepsilon^2)$.
+\item Starting from $\hat z_0=0$, use \eqref{eq:lin_ar1} to construct $\{\hat z_t\}_{t=1}^T$.
+\item Given $\hat k_0=0$ (equivalently, $k_0=\bar k$), iterate on the policy rules
+\begin{equation*}
+\hat c_t = \eta_{ck}\hat k_t + \eta_{cz}\hat z_t,
+\qquad
+\hat k_{t+1} = \eta_{kk}\hat k_t + \eta_{kz}\hat z_t,
+\end{equation*}
+to generate $\{\hat c_t,\hat k_t\}_{t=0}^T$.
+\item Recover output from the log-linear approximation
+\begin{equation*}
+\hat y_t = \hat z_t + \alpha \hat k_t,
+\end{equation*}
+and plot $\{\hat z_t,\hat c_t,\hat k_t,\hat y_t\}_{t=0}^T$.
+\end{enumerate}
+
+\paragraph{Impulse response to a positive productivity shock.}
+\begin{enumerate}
+\item Choose a deterministic shock sequence such that $\varepsilon_1=\sigma_\varepsilon$ and $\varepsilon_t=0$ for all $t\ge 2$. This corresponds to a one-standard-deviation innovation to log productivity. If instead you want a unit shock, set $\varepsilon_1=1$.
+\item Starting from $\hat z_0=0$, use \eqref{eq:lin_ar1} to generate the path of productivity.
+\item Given $\hat k_0=0$, iterate on the policy rules to obtain the paths of $\hat c_t$ and $\hat k_t$.
+\item Compute $\hat y_t = \hat z_t + \alpha \hat k_t$ and plot the impulse responses of productivity, consumption, capital, and output.
+\end{enumerate}
+
+\section{Reference}
+
+Uhlig, H. (1999). ``A Toolkit for Analyzing Nonlinear Dynamic Stochastic Models Easily.'' In R. Marimon and A. Scott (eds.), \textit{Computational Methods for the Study of Dynamic Economies}, Oxford University Press, 30--61.
+
+\end{document}
